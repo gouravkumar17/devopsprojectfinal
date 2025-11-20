@@ -1,0 +1,36 @@
+---
+- name: Deploy static website from GitHub
+  hosts: webserver
+  become: yes
+
+  tasks:
+    - name: Install required packages (git + nginx)
+      apt:
+        name:
+          - git
+          - nginx
+        state: present
+        update_cache: yes
+
+    - name: Ensure nginx is running
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: Remove old nginx html folder
+      file:
+        path: /var/www/html/
+        state: absent
+
+    - name: Create fresh nginx html folder
+      file:
+        path: /var/www/html/
+        state: directory
+        mode: "0755"
+
+    - name: Pull latest website code from GitHub
+      git:
+        repo: "https://github.com/gouravkumar17/devops_project"
+        dest: /var/www/html/
+        version: HEAD
