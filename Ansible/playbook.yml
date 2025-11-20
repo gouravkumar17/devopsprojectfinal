@@ -31,6 +31,6 @@
 
     - name: Pull latest website code from GitHub
       git:
-        repo: "https://github.com/gouravkumar17/devops_project"
+        repo: "https://github.com/gouravkumar17/devopsprojectfinal"
         dest: /var/www/html/
         version: HEAD

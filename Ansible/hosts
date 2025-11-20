@@ -1,2 +1,2 @@
 [webserver]
-65.0.123.145 ansible_user=ubuntu ansible_ssh_private_key_file=/home/coder5041/devops_project.pem
+65.0.123.145 ansible_user=ubuntu ansible_ssh_private_key_file=/home/gourav17/devops_project.pem
