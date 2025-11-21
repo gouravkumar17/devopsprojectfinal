@@ -1,1150 +1,1398 @@
-// DOM Elements
-const themeSwitch = document.getElementById('theme-switch');
-const sidebarToggle = document.getElementById('sidebar-toggle');
-const sidebar = document.querySelector('.sidebar');
-const navItems = document.querySelectorAll('.nav-item');
-const pages = document.querySelectorAll('.page');
-const pageTitle = document.getElementById('page-title');
-const viewAllButtons = document.querySelectorAll('.view-all');
-const incomeForm = document.getElementById('income-form');
-const expenseForm = document.getElementById('expense-form');
-const searchInput = document.getElementById('search-transactions');
-const filterCategory = document.getElementById('filter-category');
-const filterType = document.getElementById('filter-type');
-const toast = document.getElementById('notification-toast');
-const notificationBell = document.getElementById('notification-bell');
-const notificationDropdown = document.getElementById('notification-dropdown');
-const notificationList = document.getElementById('notification-list');
-const notificationCount = document.getElementById('notification-count');
-const clearNotificationsBtn = document.getElementById('clear-notifications');
-const deleteModal = document.getElementById('delete-modal');
-const cancelDeleteBtn = document.getElementById('cancel-delete');
-const confirmDeleteBtn = document.getElementById('confirm-delete');
-const closeModalBtn = document.querySelector('.close-modal');
-const transactionPreview = document.getElementById('transaction-preview');
-
-// Chart instances
-let incomeExpenseChart, categoryChart, monthlyTrendChart, budgetChart;
-
-// State
-let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
-let notifications = JSON.parse(localStorage.getItem('notifications')) || [];
-let currentPage = 'dashboard';
-let transactionToDelete = null;
-let previousMonthData = JSON.parse(localStorage.getItem('previousMonthData')) || {
-    income: 0,
-    expense: 0,
-    balance: 0,
-    savings: 0
-};
-
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    initializeApp();
-    setupEventListeners();
-    loadSampleData();
-    updateUI();
-    initializeCharts();
-    updateNotifications();
+// script.js
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize the application
+    initApp();
 });
 
-function initializeApp() {
-    // Set today's date as default
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('income-date').value = today;
-    document.getElementById('expense-date').value = today;
+// Application State
+const state = {
+    currentUser: null,
+    currentPage: 'home',
+    feedbacks: [],
+    users: [],
+    currentSort: 'recent',
+    currentSearch: '',
+    itemsPerPage: 6,
+    currentPageIndex: 0
+};
+
+// DOM Elements
+const elements = {
+    // Navigation
+    navLinks: document.querySelectorAll('.nav-link'),
+    authButtons: document.getElementById('authButtons'),
+    userMenu: document.getElementById('userMenu'),
+    userAvatar: document.getElementById('userAvatar'),
+    usernameDisplay: document.getElementById('usernameDisplay'),
+    loginBtn: document.getElementById('loginBtn'),
+    signupBtn: document.getElementById('signupBtn'),
+    logoutBtn: document.getElementById('logoutBtn'),
+    themeToggle: document.getElementById('themeToggle'),
+    hamburger: document.getElementById('hamburger'),
     
-    // Check saved theme
-    if (localStorage.getItem('theme') === 'dark') {
-        themeSwitch.checked = true;
-        document.body.classList.add('dark-theme');
+    // Pages
+    pages: document.querySelectorAll('.page'),
+    
+    // Home Page
+    totalFeedbacks: document.getElementById('totalFeedbacks'),
+    totalUsers: document.getElementById('totalUsers'),
+    avgRating: document.getElementById('avgRating'),
+    totalLikes: document.getElementById('totalLikes'),
+    
+    // Feedbacks Page
+    searchInput: document.getElementById('searchInput'),
+    sortSelect: document.getElementById('sortSelect'),
+    feedbacksContainer: document.getElementById('feedbacksContainer'),
+    pagination: document.getElementById('pagination'),
+    
+    // Add Feedback Page
+    feedbackForm: document.getElementById('feedbackForm'),
+    feedbackTitle: document.getElementById('feedbackTitle'),
+    feedbackDescription: document.getElementById('feedbackDescription'),
+    feedbackScreenshot: document.getElementById('feedbackScreenshot'),
+    screenshotPreview: document.getElementById('screenshotPreview'),
+    speechToTextBtn: document.getElementById('speechToTextBtn'),
+    
+    // Dashboard
+    profileAvatar: document.getElementById('profileAvatar'),
+    avatarEditBtn: document.getElementById('avatarEditBtn'),
+    dashboardUsername: document.getElementById('dashboardUsername'),
+    dashboardEmail: document.getElementById('dashboardEmail'),
+    userFeedbacksCount: document.getElementById('userFeedbacksCount'),
+    userLikesCount: document.getElementById('userLikesCount'),
+    userRepliesCount: document.getElementById('userRepliesCount'),
+    userFeedbacks: document.getElementById('userFeedbacks'),
+    sidebarMenuItems: document.querySelectorAll('.sidebar-menu-item'),
+    dashboardTabs: document.querySelectorAll('.dashboard-tab'),
+    profileForm: document.getElementById('profileForm'),
+    profileUsername: document.getElementById('profileUsername'),
+    profileEmail: document.getElementById('profileEmail'),
+    currentPassword: document.getElementById('currentPassword'),
+    newPassword: document.getElementById('newPassword'),
+    confirmPassword: document.getElementById('confirmPassword'),
+    colorOptions: document.querySelectorAll('.color-option'),
+    backgroundOptions: document.querySelectorAll('.background-option'),
+    exportDataBtn: document.getElementById('exportDataBtn'),
+    importDataFile: document.getElementById('importDataFile'),
+    resetDataBtn: document.getElementById('resetDataBtn'),
+    
+    // Modals
+    loginModal: document.getElementById('loginModal'),
+    signupModal: document.getElementById('signupModal'),
+    loginModalClose: document.getElementById('loginModalClose'),
+    signupModalClose: document.getElementById('signupModalClose'),
+    loginForm: document.getElementById('loginForm'),
+    signupForm: document.getElementById('signupForm'),
+    switchToSignup: document.getElementById('switchToSignup'),
+    switchToLogin: document.getElementById('switchToLogin'),
+    
+    // FAB
+    fab: document.getElementById('fab'),
+    
+    // Toast
+    toastContainer: document.getElementById('toastContainer'),
+    
+    // Confetti
+    confettiCanvas: document.getElementById('confettiCanvas')
+};
+
+// Initialize the application
+function initApp() {
+    // Load data from localStorage
+    loadData();
+    
+    // Check if user is logged in
+    checkAuthStatus();
+    
+    // Set up event listeners
+    setupEventListeners();
+    
+    // Initialize the home page
+    updateHomeStats();
+    
+    // Load feedbacks
+    loadFeedbacks();
+    
+    // Apply saved theme
+    applySavedTheme();
+}
+
+// Load data from localStorage
+function loadData() {
+    // Load users
+    const storedUsers = localStorage.getItem('feedbackUsers');
+    state.users = storedUsers ? JSON.parse(storedUsers) : [];
+    
+    // Load feedbacks
+    const storedFeedbacks = localStorage.getItem('feedbacks');
+    state.feedbacks = storedFeedbacks ? JSON.parse(storedFeedbacks) : [];
+    
+    // Load current user from session
+    const currentUserSession = sessionStorage.getItem('currentUser');
+    if (currentUserSession) {
+        state.currentUser = JSON.parse(currentUserSession);
     }
     
-    // Show dashboard by default
-    showPage('dashboard');
+    // Check if "Remember Me" is set
+    const rememberMeUser = localStorage.getItem('rememberMeUser');
+    if (rememberMeUser && !state.currentUser) {
+        const userData = JSON.parse(rememberMeUser);
+        state.currentUser = state.users.find(user => user.email === userData.email && user.password === userData.password);
+        if (state.currentUser) {
+            sessionStorage.setItem('currentUser', JSON.stringify(state.currentUser));
+        }
+    }
 }
 
-function setupEventListeners() {
-    // Theme toggle
-    themeSwitch.addEventListener('change', toggleTheme);
-    
-    // Sidebar toggle
-    sidebarToggle.addEventListener('click', () => {
-        sidebar.classList.toggle('active');
-    });
-    
-    // Navigation
-    navItems.forEach(item => {
-        item.addEventListener('click', (e) => {
-            e.preventDefault();
-            const page = item.dataset.page;
-            showPage(page);
-            if (window.innerWidth < 768) {
-                sidebar.classList.remove('active');
-            }
-        });
-    });
-    
-    // View all buttons
-    viewAllButtons.forEach(button => {
-        button.addEventListener('click', (e) => {
-            e.preventDefault();
-            showPage(button.dataset.page);
-        });
-    });
-    
-    // Form submissions
-    incomeForm.addEventListener('submit', handleIncomeSubmit);
-    expenseForm.addEventListener('submit', handleExpenseSubmit);
-    
-    // Filters and search
-    searchInput.addEventListener('input', updateTransactionsUI);
-    filterCategory.addEventListener('change', updateTransactionsUI);
-    filterType.addEventListener('change', updateTransactionsUI);
-    
-    // Chart period change
-    document.getElementById('chart-period').addEventListener('change', updateCharts);
-    
-    // Notification bell
-    notificationBell.addEventListener('click', toggleNotifications);
-    
-    // Clear notifications
-    clearNotificationsBtn.addEventListener('click', clearAllNotifications);
-    
-    // Delete modal
-    cancelDeleteBtn.addEventListener('click', closeDeleteModal);
-    confirmDeleteBtn.addEventListener('click', confirmDelete);
-    closeModalBtn.addEventListener('click', closeDeleteModal);
-    
-    // Close dropdown when clicking outside
-    document.addEventListener('click', (e) => {
-        if (!notificationBell.contains(e.target) && !notificationDropdown.contains(e.target)) {
-            notificationDropdown.style.display = 'none';
+// Save data to localStorage
+function saveData() {
+    localStorage.setItem('feedbackUsers', JSON.stringify(state.users));
+    localStorage.setItem('feedbacks', JSON.stringify(state.feedbacks));
+}
+
+// Check authentication status
+function checkAuthStatus() {
+    if (state.currentUser) {
+        // User is logged in
+        elements.authButtons.style.display = 'none';
+        elements.userMenu.style.display = 'flex';
+        elements.usernameDisplay.textContent = state.currentUser.username;
+        
+        // Set user avatar
+        if (state.currentUser.avatar) {
+            elements.userAvatar.querySelector('img').src = state.currentUser.avatar;
+            elements.profileAvatar.querySelector('img').src = state.currentUser.avatar;
+        } else {
+            // Generate initial avatar
+            const initial = state.currentUser.username.charAt(0).toUpperCase();
+            elements.userAvatar.querySelector('img').alt = initial;
+            elements.profileAvatar.querySelector('img').alt = initial;
         }
         
-        if (e.target === deleteModal) {
-            closeDeleteModal();
+        // Update dashboard
+        updateDashboard();
+    } else {
+        // User is not logged in
+        elements.authButtons.style.display = 'flex';
+        elements.userMenu.style.display = 'none';
+    }
+}
+
+// Set up event listeners
+function setupEventListeners() {
+    // Navigation
+    elements.navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const page = link.getAttribute('data-page');
+            navigateToPage(page);
+        });
+    });
+    
+    // Auth buttons
+    elements.loginBtn.addEventListener('click', () => openModal('login'));
+    elements.signupBtn.addEventListener('click', () => openModal('signup'));
+    elements.logoutBtn.addEventListener('click', logout);
+    
+    // Theme toggle
+    elements.themeToggle.addEventListener('click', toggleTheme);
+    
+    // Hamburger menu
+    elements.hamburger.addEventListener('click', toggleMobileMenu);
+    
+    // Feedbacks page
+    elements.searchInput.addEventListener('input', handleSearch);
+    elements.sortSelect.addEventListener('change', handleSortChange);
+    
+    // Add feedback form
+    elements.feedbackForm.addEventListener('submit', handleFeedbackSubmit);
+    elements.feedbackScreenshot.addEventListener('change', handleScreenshotUpload);
+    elements.speechToTextBtn.addEventListener('click', startSpeechToText);
+    
+    // Dashboard
+    elements.sidebarMenuItems.forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            const tab = item.getAttribute('data-tab');
+            switchDashboardTab(tab);
+        });
+    });
+    
+    elements.profileForm.addEventListener('submit', handleProfileUpdate);
+    elements.avatarEditBtn.addEventListener('click', triggerAvatarUpload);
+    
+    // Theme customization
+    elements.colorOptions.forEach(option => {
+        option.addEventListener('click', () => {
+            const color = option.getAttribute('data-color');
+            changeAccentColor(color);
+        });
+    });
+    
+    elements.backgroundOptions.forEach(option => {
+        option.addEventListener('click', () => {
+            const background = option.getAttribute('data-background');
+            changeBackgroundStyle(background);
+        });
+    });
+    
+    // Data management
+    elements.exportDataBtn.addEventListener('click', exportUserData);
+    elements.importDataFile.addEventListener('change', importUserData);
+    elements.resetDataBtn.addEventListener('click', resetUserData);
+    
+    // Modals
+    elements.loginModalClose.addEventListener('click', () => closeModal('login'));
+    elements.signupModalClose.addEventListener('click', () => closeModal('signup'));
+    elements.switchToSignup.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeModal('login');
+        openModal('signup');
+    });
+    elements.switchToLogin.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeModal('signup');
+        openModal('login');
+    });
+    
+    // Auth forms
+    elements.loginForm.addEventListener('submit', handleLogin);
+    elements.signupForm.addEventListener('submit', handleSignup);
+    
+    // FAB
+    elements.fab.addEventListener('click', (e) => {
+        e.preventDefault();
+        const page = elements.fab.getAttribute('data-page');
+        navigateToPage(page);
+    });
+    
+    // Close modals when clicking outside
+    window.addEventListener('click', (e) => {
+        if (e.target === elements.loginModal) {
+            closeModal('login');
+        }
+        if (e.target === elements.signupModal) {
+            closeModal('signup');
         }
     });
 }
 
-function showPage(pageName) {
-    // Update active nav item
-    navItems.forEach(item => {
-        item.classList.remove('active');
-        if (item.dataset.page === pageName) {
-            item.classList.add('active');
+// Navigation
+function navigateToPage(page) {
+    // Update active nav link
+    elements.navLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('data-page') === page) {
+            link.classList.add('active');
         }
     });
     
     // Update active page
-    pages.forEach(page => {
-        page.classList.remove('active');
-        if (page.id === `${pageName}-page`) {
-            page.classList.add('active');
+    elements.pages.forEach(p => {
+        p.classList.remove('active');
+        if (p.id === page) {
+            p.classList.add('active');
         }
     });
     
-    // Update page title
-    const titles = {
-        'dashboard': 'Dashboard',
-        'add-income': 'Add Income',
-        'add-expense': 'Add Expense',
-        'analytics': 'Analytics',
-        'transactions': 'Transactions'
-    };
-    pageTitle.textContent = titles[pageName];
+    state.currentPage = page;
     
-    currentPage = pageName;
+    // Page-specific initializations
+    if (page === 'feedbacks') {
+        loadFeedbacks();
+    } else if (page === 'dashboard' && state.currentUser) {
+        updateDashboard();
+    }
     
-    // Update specific page content
-    if (pageName === 'transactions') {
-        updateTransactionsUI();
-    } else if (pageName === 'analytics') {
-        updateAnalytics();
+    // Close mobile menu if open
+    document.querySelector('.nav-menu').classList.remove('active');
+    elements.hamburger.classList.remove('active');
+}
+
+// Toggle mobile menu
+function toggleMobileMenu() {
+    const navMenu = document.querySelector('.nav-menu');
+    navMenu.classList.toggle('active');
+    elements.hamburger.classList.toggle('active');
+}
+
+// Modal functions
+function openModal(modalType) {
+    if (modalType === 'login') {
+        elements.loginModal.classList.add('active');
+    } else if (modalType === 'signup') {
+        elements.signupModal.classList.add('active');
     }
 }
 
+function closeModal(modalType) {
+    if (modalType === 'login') {
+        elements.loginModal.classList.remove('active');
+        elements.loginForm.reset();
+    } else if (modalType === 'signup') {
+        elements.signupModal.classList.remove('active');
+        elements.signupForm.reset();
+    }
+}
+
+// Authentication
+function handleLogin(e) {
+    e.preventDefault();
+    
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+    const rememberMe = document.getElementById('rememberMe').checked;
+    
+    // Find user
+    const user = state.users.find(u => u.email === email && u.password === password);
+    
+    if (user) {
+        // Login successful
+        state.currentUser = user;
+        sessionStorage.setItem('currentUser', JSON.stringify(user));
+        
+        if (rememberMe) {
+            localStorage.setItem('rememberMeUser', JSON.stringify({ email, password }));
+        }
+        
+        checkAuthStatus();
+        closeModal('login');
+        showToast('Login successful!', 'success');
+        
+        // Navigate to dashboard if coming from auth-required action
+        if (state.currentPage === 'add-feedback' || state.currentPage === 'dashboard') {
+            navigateToPage('dashboard');
+        }
+    } else {
+        // Login failed
+        showToast('Invalid email or password', 'error');
+    }
+}
+
+function handleSignup(e) {
+    e.preventDefault();
+    
+    const username = document.getElementById('signupUsername').value;
+    const email = document.getElementById('signupEmail').value;
+    const password = document.getElementById('signupPassword').value;
+    const confirmPassword = document.getElementById('confirmSignupPassword').value;
+    
+    // Validation
+    if (password !== confirmPassword) {
+        showToast('Passwords do not match', 'error');
+        return;
+    }
+    
+    if (state.users.find(u => u.email === email)) {
+        showToast('Email already registered', 'error');
+        return;
+    }
+    
+    if (state.users.find(u => u.username === username)) {
+        showToast('Username already taken', 'error');
+        return;
+    }
+    
+    // Create new user
+    const newUser = {
+        id: generateId(),
+        username,
+        email,
+        password,
+        avatar: null,
+        theme: {
+            accentColor: '#4f46e5',
+            background: 'gradient'
+        },
+        joined: new Date().toISOString()
+    };
+    
+    state.users.push(newUser);
+    saveData();
+    
+    // Auto login
+    state.currentUser = newUser;
+    sessionStorage.setItem('currentUser', JSON.stringify(newUser));
+    checkAuthStatus();
+    closeModal('signup');
+    showToast('Account created successfully!', 'success');
+    
+    // Navigate to dashboard
+    navigateToPage('dashboard');
+}
+
+function logout() {
+    state.currentUser = null;
+    sessionStorage.removeItem('currentUser');
+    localStorage.removeItem('rememberMeUser');
+    checkAuthStatus();
+    showToast('Logged out successfully', 'info');
+    navigateToPage('home');
+}
+
+// Theme management
 function toggleTheme() {
-    document.body.classList.toggle('dark-theme');
-    localStorage.setItem('theme', themeSwitch.checked ? 'dark' : 'light');
-    updateCharts(); // Update charts for new theme
-}
-
-function toggleNotifications() {
-    const isVisible = notificationDropdown.style.display === 'block';
-    notificationDropdown.style.display = isVisible ? 'none' : 'block';
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
     
-    // Mark all as read when opening
-    if (!isVisible) {
-        markAllNotificationsAsRead();
+    document.documentElement.setAttribute('data-theme', newTheme);
+    elements.themeToggle.innerHTML = newTheme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+    
+    // Save theme preference
+    if (state.currentUser) {
+        state.currentUser.theme = state.currentUser.theme || {};
+        state.currentUser.theme.mode = newTheme;
+        updateUser(state.currentUser);
+    } else {
+        localStorage.setItem('guestTheme', newTheme);
     }
 }
 
-function handleIncomeSubmit(e) {
-    e.preventDefault();
+function applySavedTheme() {
+    let theme = 'light';
     
-    const description = document.getElementById('income-description').value.trim();
-    const amount = parseFloat(document.getElementById('income-amount').value);
-    const category = document.getElementById('income-category').value;
-    const date = document.getElementById('income-date').value;
+    if (state.currentUser && state.currentUser.theme && state.currentUser.theme.mode) {
+        theme = state.currentUser.theme.mode;
+    } else {
+        const savedTheme = localStorage.getItem('guestTheme');
+        if (savedTheme) theme = savedTheme;
+    }
     
-    if (!description || !amount || !category || !date) {
-        showToast('Please fill in all fields', 'error');
+    document.documentElement.setAttribute('data-theme', theme);
+    elements.themeToggle.innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+    
+    // Apply saved accent color and background
+    if (state.currentUser && state.currentUser.theme) {
+        if (state.currentUser.theme.accentColor) {
+            changeAccentColor(state.currentUser.theme.accentColor, false);
+        }
+        if (state.currentUser.theme.background) {
+            changeBackgroundStyle(state.currentUser.theme.background, false);
+        }
+    }
+}
+
+function changeAccentColor(color, save = true) {
+    document.documentElement.style.setProperty('--primary-color', color);
+    
+    // Calculate darker shade for --primary-dark
+    const darker = shadeColor(color, -20);
+    document.documentElement.style.setProperty('--primary-dark', darker);
+    
+    // Calculate lighter shade for --primary-light
+    const lighter = shadeColor(color, 20);
+    document.documentElement.style.setProperty('--primary-light', lighter);
+    
+    // Update active color option
+    elements.colorOptions.forEach(option => {
+        option.classList.remove('active');
+        if (option.getAttribute('data-color') === color) {
+            option.classList.add('active');
+        }
+    });
+    
+    // Save to user preferences
+    if (save && state.currentUser) {
+        state.currentUser.theme = state.currentUser.theme || {};
+        state.currentUser.theme.accentColor = color;
+        updateUser(state.currentUser);
+    }
+}
+
+function changeBackgroundStyle(background, save = true) {
+    document.body.className = '';
+    document.body.classList.add(`${background}-bg`);
+    
+    // Update active background option
+    elements.backgroundOptions.forEach(option => {
+        option.classList.remove('active');
+        if (option.getAttribute('data-background') === background) {
+            option.classList.add('active');
+        }
+    });
+    
+    // Save to user preferences
+    if (save && state.currentUser) {
+        state.currentUser.theme = state.currentUser.theme || {};
+        state.currentUser.theme.background = background;
+        updateUser(state.currentUser);
+    }
+}
+
+// Helper function to shade colors
+function shadeColor(color, percent) {
+    let R = parseInt(color.substring(1, 3), 16);
+    let G = parseInt(color.substring(3, 5), 16);
+    let B = parseInt(color.substring(5, 7), 16);
+
+    R = parseInt(R * (100 + percent) / 100);
+    G = parseInt(G * (100 + percent) / 100);
+    B = parseInt(B * (100 + percent) / 100);
+
+    R = (R < 255) ? R : 255;
+    G = (G < 255) ? G : 255;
+    B = (B < 255) ? B : 255;
+
+    const RR = ((R.toString(16).length === 1) ? "0" + R.toString(16) : R.toString(16));
+    const GG = ((G.toString(16).length === 1) ? "0" + G.toString(16) : G.toString(16));
+    const BB = ((B.toString(16).length === 1) ? "0" + B.toString(16) : B.toString(16));
+
+    return "#" + RR + GG + BB;
+}
+
+// Home page stats
+function updateHomeStats() {
+    const totalFeedbacks = state.feedbacks.length;
+    const totalUsers = state.users.length;
+    
+    // Calculate average rating
+    let totalRating = 0;
+    state.feedbacks.forEach(feedback => {
+        totalRating += feedback.rating;
+    });
+    const avgRating = totalFeedbacks > 0 ? (totalRating / totalFeedbacks).toFixed(1) : 0;
+    
+    // Calculate total likes
+    let totalLikes = 0;
+    state.feedbacks.forEach(feedback => {
+        totalLikes += feedback.likes ? feedback.likes.length : 0;
+    });
+    
+    elements.totalFeedbacks.textContent = totalFeedbacks;
+    elements.totalUsers.textContent = totalUsers;
+    elements.avgRating.textContent = avgRating;
+    elements.totalLikes.textContent = totalLikes;
+}
+
+// Feedbacks management
+function loadFeedbacks() {
+    let filteredFeedbacks = [...state.feedbacks];
+    
+    // Apply search filter
+    if (state.currentSearch) {
+        const searchTerm = state.currentSearch.toLowerCase();
+        filteredFeedbacks = filteredFeedbacks.filter(feedback => 
+            feedback.title.toLowerCase().includes(searchTerm) || 
+            feedback.description.toLowerCase().includes(searchTerm) ||
+            feedback.user.username.toLowerCase().includes(searchTerm)
+        );
+    }
+    
+    // Apply sorting
+    switch (state.currentSort) {
+        case 'recent':
+            filteredFeedbacks.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            break;
+        case 'highest-rated':
+            filteredFeedbacks.sort((a, b) => b.rating - a.rating);
+            break;
+        case 'most-liked':
+            filteredFeedbacks.sort((a, b) => (b.likes ? b.likes.length : 0) - (a.likes ? a.likes.length : 0));
+            break;
+    }
+    
+    // Apply pagination
+    const startIndex = state.currentPageIndex * state.itemsPerPage;
+    const endIndex = startIndex + state.itemsPerPage;
+    const paginatedFeedbacks = filteredFeedbacks.slice(startIndex, endIndex);
+    
+    // Render feedbacks
+    renderFeedbacks(paginatedFeedbacks);
+    
+    // Render pagination
+    renderPagination(filteredFeedbacks.length);
+}
+
+function renderFeedbacks(feedbacks) {
+    elements.feedbacksContainer.innerHTML = '';
+    
+    if (feedbacks.length === 0) {
+        elements.feedbacksContainer.innerHTML = `
+            <div class="no-feedbacks">
+                <i class="fas fa-comment-slash"></i>
+                <h3>No feedbacks found</h3>
+                <p>${state.currentSearch ? 'Try adjusting your search terms' : 'Be the first to share your feedback!'}</p>
+            </div>
+        `;
         return;
     }
     
-    addTransaction(description, amount, 'income', category, date);
-    incomeForm.reset();
-    document.getElementById('income-date').value = new Date().toISOString().split('T')[0];
-    
-    showToast('Income added successfully!', 'success');
-    showPage('dashboard');
+    feedbacks.forEach(feedback => {
+        const feedbackElement = createFeedbackElement(feedback);
+        elements.feedbacksContainer.appendChild(feedbackElement);
+    });
 }
 
-function handleExpenseSubmit(e) {
-    e.preventDefault();
+function createFeedbackElement(feedback) {
+    const div = document.createElement('div');
+    div.className = 'feedback-card';
     
-    const description = document.getElementById('expense-description').value.trim();
-    const amount = parseFloat(document.getElementById('expense-amount').value);
-    const category = document.getElementById('expense-category').value;
-    const date = document.getElementById('expense-date').value;
+    // Format date
+    const date = new Date(feedback.timestamp);
+    const formattedDate = date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+    });
     
-    if (!description || !amount || !category || !date) {
-        showToast('Please fill in all fields', 'error');
-        return;
+    // Generate star rating
+    let stars = '';
+    for (let i = 1; i <= 5; i++) {
+        if (i <= feedback.rating) {
+            stars += '<i class="fas fa-star"></i>';
+        } else {
+            stars += '<i class="far fa-star"></i>';
+        }
     }
     
-    addTransaction(description, amount, 'expense', category, date);
-    expenseForm.reset();
-    document.getElementById('expense-date').value = new Date().toISOString().split('T')[0];
+    // Check if current user has liked this feedback
+    const isLiked = state.currentUser && feedback.likes && feedback.likes.includes(state.currentUser.id);
     
-    showToast('Expense added successfully!', 'success');
-    showPage('dashboard');
-}
-
-function addTransaction(description, amount, type, category, date) {
-    const transaction = {
-        id: Date.now().toString(),
-        description,
-        amount: type === 'income' ? amount : -amount,
-        type,
-        category,
-        date,
-        timestamp: new Date().getTime()
-    };
+    // Check if current user is the author
+    const isAuthor = state.currentUser && feedback.user.id === state.currentUser.id;
     
-    transactions.unshift(transaction);
-    saveTransactions();
-    
-    // Add notification
-    addNotification(
-        type === 'income' ? 'income' : 'expense',
-        `${type === 'income' ? 'Income' : 'Expense'} Added`,
-        `${type === 'income' ? 'Income' : 'Expense'} of ${formatCurrency(amount)} added for ${description}`,
-        transaction
-    );
-    
-    updateUI();
-}
-
-function deleteTransaction(transactionId) {
-    const transactionIndex = transactions.findIndex(t => t.id === transactionId);
-    if (transactionIndex === -1) return;
-    
-    const deletedTransaction = transactions[transactionIndex];
-    transactions.splice(transactionIndex, 1);
-    saveTransactions();
-    
-    // Add deletion notification
-    addNotification(
-        'delete',
-        'Transaction Deleted',
-        `${deletedTransaction.type === 'income' ? 'Income' : 'Expense'} of ${formatCurrency(Math.abs(deletedTransaction.amount))} deleted`,
-        deletedTransaction
-    );
-    
-    updateUI();
-    closeDeleteModal();
-    showToast('Transaction deleted successfully!', 'success');
-}
-
-function openDeleteModal(transactionId) {
-    const transaction = transactions.find(t => t.id === transactionId);
-    if (!transaction) return;
-    
-    transactionToDelete = transactionId;
-    
-    // Populate preview
-    transactionPreview.innerHTML = `
-        <div class="preview-item">
-            <span class="preview-label">Description:</span>
-            <span class="preview-value">${transaction.description}</span>
+    div.innerHTML = `
+        <div class="feedback-header">
+            <div class="feedback-user">
+                <div class="user-avatar">
+                    ${feedback.user.avatar ? 
+                        `<img src="${feedback.user.avatar}" alt="${feedback.user.username}">` : 
+                        feedback.user.username.charAt(0).toUpperCase()
+                    }
+                </div>
+                <div class="user-details">
+                    <h4>${feedback.user.username}</h4>
+                    <span>${formattedDate}</span>
+                </div>
+            </div>
+            <div class="feedback-rating">
+                ${stars}
+            </div>
         </div>
-        <div class="preview-item">
-            <span class="preview-label">Amount:</span>
-            <span class="preview-value ${transaction.type}">
-                ${transaction.type === 'income' ? '+' : '-'}${formatCurrency(Math.abs(transaction.amount))}
-            </span>
+        <div class="feedback-content">
+            <h3>${feedback.title}</h3>
+            <p>${feedback.description}</p>
+            ${feedback.screenshot ? `
+                <div class="feedback-screenshot">
+                    <img src="${feedback.screenshot}" alt="Screenshot" class="screenshot-img">
+                </div>
+            ` : ''}
         </div>
-        <div class="preview-item">
-            <span class="preview-label">Category:</span>
-            <span class="preview-value">${getCategoryName(transaction.category)}</span>
-        </div>
-        <div class="preview-item">
-            <span class="preview-label">Date:</span>
-            <span class="preview-value">${formatDate(transaction.date)}</span>
+        <div class="feedback-actions">
+            <button class="action-btn like-btn ${isLiked ? 'liked' : ''}" data-id="${feedback.id}">
+                <i class="fas fa-heart"></i>
+                <span>${feedback.likes ? feedback.likes.length : 0}</span>
+            </button>
+            <button class="action-btn reply-btn" data-id="${feedback.id}">
+                <i class="fas fa-comment"></i>
+                <span>${feedback.replies ? feedback.replies.length : 0}</span>
+            </button>
+            ${isAuthor ? `
+                <button class="action-btn edit-btn" data-id="${feedback.id}">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="action-btn delete-btn" data-id="${feedback.id}">
+                    <i class="fas fa-trash"></i>
+                </button>
+            ` : ''}
         </div>
     `;
     
-    deleteModal.classList.add('show');
-}
-
-function closeDeleteModal() {
-    deleteModal.classList.remove('show');
-    transactionToDelete = null;
-}
-
-function confirmDelete() {
-    if (transactionToDelete) {
-        deleteTransaction(transactionToDelete);
-    }
-}
-
-function saveTransactions() {
-    localStorage.setItem('transactions', JSON.stringify(transactions));
-}
-
-function updateUI() {
-    updateSummary();
-    updateRecentTransactions();
-    updateCharts();
+    // Add event listeners to action buttons
+    const likeBtn = div.querySelector('.like-btn');
+    likeBtn.addEventListener('click', () => handleLike(feedback.id));
     
-    if (currentPage === 'transactions') {
-        updateTransactionsUI();
+    const replyBtn = div.querySelector('.reply-btn');
+    replyBtn.addEventListener('click', () => handleReply(feedback.id));
+    
+    if (isAuthor) {
+        const editBtn = div.querySelector('.edit-btn');
+        editBtn.addEventListener('click', () => handleEdit(feedback.id));
+        
+        const deleteBtn = div.querySelector('.delete-btn');
+        deleteBtn.addEventListener('click', () => handleDelete(feedback.id));
     }
     
-    if (currentPage === 'analytics') {
-        updateAnalytics();
-    }
+    return div;
 }
 
-function updateSummary() {
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
+function renderPagination(totalItems) {
+    const totalPages = Math.ceil(totalItems / state.itemsPerPage);
     
-    // Calculate current month data
-    const currentMonthTransactions = transactions.filter(transaction => {
-        const transactionDate = new Date(transaction.date);
-        return transactionDate.getMonth() === currentMonth && 
-               transactionDate.getFullYear() === currentYear;
+    if (totalPages <= 1) {
+        elements.pagination.innerHTML = '';
+        return;
+    }
+    
+    let paginationHTML = '';
+    
+    // Previous button
+    if (state.currentPageIndex > 0) {
+        paginationHTML += `<button class="page-prev" data-page="${state.currentPageIndex - 1}">Previous</button>`;
+    }
+    
+    // Page numbers
+    for (let i = 0; i < totalPages; i++) {
+        const isActive = i === state.currentPageIndex;
+        paginationHTML += `<button class="${isActive ? 'active' : ''}" data-page="${i}">${i + 1}</button>`;
+    }
+    
+    // Next button
+    if (state.currentPageIndex < totalPages - 1) {
+        paginationHTML += `<button class="page-next" data-page="${state.currentPageIndex + 1}">Next</button>`;
+    }
+    
+    elements.pagination.innerHTML = paginationHTML;
+    
+    // Add event listeners to pagination buttons
+    elements.pagination.querySelectorAll('button').forEach(button => {
+        button.addEventListener('click', () => {
+            const page = parseInt(button.getAttribute('data-page'));
+            state.currentPageIndex = page;
+            loadFeedbacks();
+        });
     });
-    
-    const income = currentMonthTransactions
-        .filter(t => t.type === 'income')
-        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-    
-    const expense = currentMonthTransactions
-        .filter(t => t.type === 'expense')
-        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-    
-    const balance = income - expense;
-    const savings = Math.max(0, income * 0.2 - expense * 0.1);
-    
-    // Calculate previous month data for comparison
-    const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-    const previousYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-    
-    const previousMonthTransactions = transactions.filter(transaction => {
-        const transactionDate = new Date(transaction.date);
-        return transactionDate.getMonth() === previousMonth && 
-               transactionDate.getFullYear() === previousYear;
-    });
-    
-    const previousIncome = previousMonthTransactions
-        .filter(t => t.type === 'income')
-        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-    
-    const previousExpense = previousMonthTransactions
-        .filter(t => t.type === 'expense')
-        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-    
-    const previousBalance = previousIncome - previousExpense;
-    const previousSavings = Math.max(0, previousIncome * 0.2 - previousExpense * 0.1);
-    
-    // Calculate percentage changes
-    const balanceChange = previousBalance !== 0 ? ((balance - previousBalance) / Math.abs(previousBalance)) * 100 : 0;
-    const incomeChange = previousIncome !== 0 ? ((income - previousIncome) / previousIncome) * 100 : (income > 0 ? 100 : 0);
-    const expenseChange = previousExpense !== 0 ? ((expense - previousExpense) / previousExpense) * 100 : (expense > 0 ? 100 : 0);
-    const savingsChange = previousSavings !== 0 ? ((savings - previousSavings) / previousSavings) * 100 : (savings > 0 ? 100 : 0);
-    
-    // Update amounts
-    document.getElementById('total-balance').textContent = formatCurrency(balance);
-    document.getElementById('total-income').textContent = formatCurrency(income);
-    document.getElementById('total-expense').textContent = formatCurrency(expense);
-    document.getElementById('monthly-savings').textContent = formatCurrency(savings);
-    
-    // Update trend indicators
-    updateTrendIndicator('balance', balanceChange, balance);
-    updateTrendIndicator('income', incomeChange, income);
-    updateTrendIndicator('expense', expenseChange, expense);
-    updateTrendIndicator('savings', savingsChange, savings);
 }
 
-function updateTrendIndicator(type, change, currentValue) {
-    const trendElement = document.querySelector(`.summary-card.${type} .card-trend`);
-    const iconElement = trendElement.querySelector('i');
-    const textElement = trendElement.querySelector('span');
+function handleSearch() {
+    state.currentSearch = elements.searchInput.value;
+    state.currentPageIndex = 0;
+    loadFeedbacks();
+}
+
+function handleSortChange() {
+    state.currentSort = elements.sortSelect.value;
+    state.currentPageIndex = 0;
+    loadFeedbacks();
+}
+
+// Feedback interactions
+function handleLike(feedbackId) {
+    if (!state.currentUser) {
+        showToast('Please log in to like feedback', 'error');
+        openModal('login');
+        return;
+    }
     
-    // Remove existing classes
-    trendElement.classList.remove('positive', 'negative', 'neutral');
-    iconElement.className = 'fas';
+    const feedback = state.feedbacks.find(f => f.id === feedbackId);
+    if (!feedback) return;
     
-    if (currentValue === 0) {
-        // No data case
-        trendElement.classList.add('neutral');
-        iconElement.classList.add('fa-minus');
-        textElement.textContent = '0%';
-    } else if (change > 0) {
-        // Positive growth
-        trendElement.classList.add('positive');
-        iconElement.classList.add('fa-arrow-up');
-        textElement.textContent = `${Math.abs(change).toFixed(1)}%`;
-    } else if (change < 0) {
-        // Negative growth
-        trendElement.classList.add('negative');
-        iconElement.classList.add('fa-arrow-down');
-        textElement.textContent = `${Math.abs(change).toFixed(1)}%`;
+    // Initialize likes array if it doesn't exist
+    if (!feedback.likes) {
+        feedback.likes = [];
+    }
+    
+    // Check if user already liked this feedback
+    const userIndex = feedback.likes.indexOf(state.currentUser.id);
+    
+    if (userIndex === -1) {
+        // Add like
+        feedback.likes.push(state.currentUser.id);
     } else {
-        // No change
-        trendElement.classList.add('neutral');
-        iconElement.classList.add('fa-minus');
-        textElement.textContent = '0%';
+        // Remove like
+        feedback.likes.splice(userIndex, 1);
     }
+    
+    saveData();
+    loadFeedbacks();
+    
+    // Update home stats
+    updateHomeStats();
 }
 
-function updateRecentTransactions() {
-    const container = document.getElementById('recent-transactions');
-    const recentTransactions = transactions.slice(0, 5);
-    
-    if (recentTransactions.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <i class="fas fa-receipt"></i>
-                <h4>No transactions yet</h4>
-                <p>Add your first transaction to get started</p>
-            </div>
-        `;
+function handleReply(feedbackId) {
+    if (!state.currentUser) {
+        showToast('Please log in to reply', 'error');
+        openModal('login');
         return;
     }
     
-    container.innerHTML = recentTransactions.map(transaction => `
-        <div class="transaction-item">
-            <div class="transaction-info">
-                <div class="transaction-icon category-${transaction.category}">
-                    <i class="${getCategoryIcon(transaction.category)}"></i>
-                </div>
-                <div class="transaction-details">
-                    <h4>${transaction.description}</h4>
-                    <div class="transaction-meta">
-                        <span>${formatDate(transaction.date)}</span>
-                        <span class="transaction-category">${getCategoryName(transaction.category)}</span>
-                    </div>
-                </div>
-            </div>
-            <div class="transaction-amount ${transaction.type}">
-                ${transaction.type === 'income' ? '+' : '-'}${formatCurrency(Math.abs(transaction.amount))}
-            </div>
-        </div>
-    `).join('');
-}
-
-function updateTransactionsUI() {
-    const container = document.getElementById('all-transactions');
-    const searchTerm = searchInput.value.toLowerCase();
-    const categoryFilter = filterCategory.value;
-    const typeFilter = filterType.value;
-    
-    let filteredTransactions = transactions.filter(transaction => {
-        const matchesSearch = transaction.description.toLowerCase().includes(searchTerm);
-        const matchesCategory = categoryFilter === 'all' || transaction.category === categoryFilter;
-        const matchesType = typeFilter === 'all' || transaction.type === typeFilter;
+    // For simplicity, we'll just show a prompt
+    // In a real app, you'd have a more sophisticated reply system
+    const reply = prompt('Enter your reply:');
+    if (reply && reply.trim() !== '') {
+        const feedback = state.feedbacks.find(f => f.id === feedbackId);
+        if (!feedback) return;
         
-        return matchesSearch && matchesCategory && matchesType;
-    });
-    
-    if (filteredTransactions.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <i class="fas fa-receipt"></i>
-                <h4>No transactions found</h4>
-                <p>Try changing your search or filters</p>
-            </div>
-        `;
-        return;
+        // Initialize replies array if it doesn't exist
+        if (!feedback.replies) {
+            feedback.replies = [];
+        }
+        
+        // Add reply
+        feedback.replies.push({
+            id: generateId(),
+            user: {
+                id: state.currentUser.id,
+                username: state.currentUser.username,
+                avatar: state.currentUser.avatar
+            },
+            content: reply.trim(),
+            timestamp: new Date().toISOString()
+        });
+        
+        saveData();
+        loadFeedbacks();
+        showToast('Reply added successfully', 'success');
     }
-    
-    container.innerHTML = filteredTransactions.map(transaction => `
-        <div class="transaction-item">
-            <div class="transaction-main">
-                <div class="transaction-info">
-                    <div class="transaction-icon category-${transaction.category}">
-                        <i class="${getCategoryIcon(transaction.category)}"></i>
-                    </div>
-                    <div class="transaction-details">
-                        <h4>${transaction.description}</h4>
-                        <div class="transaction-meta">
-                            <span>${formatDate(transaction.date)}</span>
-                            <span class="transaction-category">${getCategoryName(transaction.category)}</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="transaction-amount ${transaction.type}">
-                    ${transaction.type === 'income' ? '+' : '-'}${formatCurrency(Math.abs(transaction.amount))}
-                </div>
-            </div>
-            <div class="transaction-actions">
-                <button class="delete-btn" onclick="openDeleteModal('${transaction.id}')">
-                    <i class="fas fa-trash"></i> Delete
-                </button>
-            </div>
-        </div>
-    `).join('');
 }
 
-function updateAnalytics() {
-    updateSavingsProgress();
-    updateSpendingInsights();
-    updateCharts(); // Refresh charts with current data
-}
-
-function updateSavingsProgress() {
-    const income = transactions
-        .filter(t => t.type === 'income')
-        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+function handleEdit(feedbackId) {
+    const feedback = state.feedbacks.find(f => f.id === feedbackId);
+    if (!feedback) return;
     
-    const expense = transactions
-        .filter(t => t.type === 'expense')
-        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+    // Populate form with feedback data
+    elements.feedbackTitle.value = feedback.title;
+    elements.feedbackDescription.value = feedback.description;
     
-    const savings = Math.max(0, income * 0.2 - expense * 0.1);
-    const progress = Math.min((savings / 10000) * 100, 100); // ₹10,000 goal
-    
-    document.getElementById('savings-progress').style.width = `${progress}%`;
-    document.getElementById('savings-amount').textContent = formatCurrency(savings);
-}
-
-function updateSpendingInsights() {
-    const categories = ['food', 'shopping', 'transport'];
-    const insights = categories.map(category => {
-        const total = transactions
-            .filter(t => t.type === 'expense' && t.category === category)
-            .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-        return { category, total };
-    });
-    
-    insights.forEach((insight, index) => {
-        const insightElement = document.querySelectorAll('.insight-amount')[index];
-        if (insightElement) {
-            insightElement.textContent = formatCurrency(insight.total);
+    // Set rating
+    document.querySelectorAll('input[name="rating"]').forEach(radio => {
+        if (parseInt(radio.value) === feedback.rating) {
+            radio.checked = true;
         }
     });
+    
+    // Set screenshot if exists
+    if (feedback.screenshot) {
+        elements.screenshotPreview.innerHTML = `<img src="${feedback.screenshot}" alt="Screenshot">`;
+    }
+    
+    // Change form submit handler to update instead of create
+    elements.feedbackForm.onsubmit = (e) => {
+        e.preventDefault();
+        updateFeedback(feedbackId);
+    };
+    
+    // Navigate to add feedback page
+    navigateToPage('add-feedback');
+    
+    // Change page title
+    document.querySelector('#add-feedback .page-header h2').textContent = 'Edit Feedback';
 }
 
-// Notification Functions
-function addNotification(type, title, message, transaction = null) {
-    const notification = {
-        id: Date.now().toString(),
-        type,
+function handleDelete(feedbackId) {
+    if (!confirm('Are you sure you want to delete this feedback?')) return;
+    
+    const feedbackIndex = state.feedbacks.findIndex(f => f.id === feedbackId);
+    if (feedbackIndex === -1) return;
+    
+    state.feedbacks.splice(feedbackIndex, 1);
+    saveData();
+    loadFeedbacks();
+    updateHomeStats();
+    showToast('Feedback deleted successfully', 'success');
+}
+
+// Feedback form handling
+function handleFeedbackSubmit(e) {
+    e.preventDefault();
+    
+    if (!state.currentUser) {
+        showToast('Please log in to submit feedback', 'error');
+        openModal('login');
+        return;
+    }
+    
+    const title = elements.feedbackTitle.value;
+    const description = elements.feedbackDescription.value;
+    const rating = document.querySelector('input[name="rating"]:checked')?.value;
+    const screenshot = elements.screenshotPreview.querySelector('img')?.src || null;
+    
+    if (!rating) {
+        showToast('Please select a rating', 'error');
+        return;
+    }
+    
+    // Create new feedback
+    const newFeedback = {
+        id: generateId(),
         title,
-        message,
-        transaction,
-        timestamp: new Date().getTime(),
-        read: false
+        description,
+        rating: parseInt(rating),
+        screenshot,
+        user: {
+            id: state.currentUser.id,
+            username: state.currentUser.username,
+            avatar: state.currentUser.avatar
+        },
+        likes: [],
+        replies: [],
+        timestamp: new Date().toISOString()
     };
     
-    notifications.unshift(notification);
-    saveNotifications();
-    updateNotifications();
+    state.feedbacks.push(newFeedback);
+    saveData();
+    
+    // Reset form
+    elements.feedbackForm.reset();
+    elements.screenshotPreview.innerHTML = '';
+    
+    // Show success message
+    showToast('Feedback submitted successfully!', 'success');
+    
+    // Show confetti animation
+    triggerConfetti();
+    
+    // Update home stats
+    updateHomeStats();
+    
+    // Navigate to feedbacks page
+    navigateToPage('feedbacks');
 }
 
-function updateNotifications() {
-    const unreadCount = notifications.filter(n => !n.read).length;
-    notificationCount.textContent = unreadCount;
+function updateFeedback(feedbackId) {
+    const feedback = state.feedbacks.find(f => f.id === feedbackId);
+    if (!feedback) return;
     
-    if (notifications.length === 0) {
-        notificationList.innerHTML = `
-            <div class="notification-empty">
-                <i class="fas fa-bell-slash"></i>
-                <p>No notifications yet</p>
-            </div>
-        `;
+    const title = elements.feedbackTitle.value;
+    const description = elements.feedbackDescription.value;
+    const rating = document.querySelector('input[name="rating"]:checked')?.value;
+    const screenshot = elements.screenshotPreview.querySelector('img')?.src || null;
+    
+    if (!rating) {
+        showToast('Please select a rating', 'error');
         return;
     }
     
-    notificationList.innerHTML = notifications.map(notification => `
-        <div class="notification-item ${notification.read ? '' : 'unread'}" onclick="markNotificationAsRead('${notification.id}')">
-            <div class="notification-content">
-                <div class="notification-icon ${notification.type}">
-                    <i class="fas fa-${getNotificationIcon(notification.type)}"></i>
-                </div>
-                <div class="notification-details">
-                    <p>${notification.message}</p>
-                    <div class="notification-time">${formatTime(notification.timestamp)}</div>
-                </div>
+    // Update feedback
+    feedback.title = title;
+    feedback.description = description;
+    feedback.rating = parseInt(rating);
+    feedback.screenshot = screenshot;
+    
+    saveData();
+    
+    // Reset form and handler
+    elements.feedbackForm.reset();
+    elements.screenshotPreview.innerHTML = '';
+    elements.feedbackForm.onsubmit = handleFeedbackSubmit;
+    
+    // Reset page title
+    document.querySelector('#add-feedback .page-header h2').textContent = 'Share Your Feedback';
+    
+    // Show success message
+    showToast('Feedback updated successfully!', 'success');
+    
+    // Navigate to feedbacks page
+    navigateToPage('feedbacks');
+}
+
+function handleScreenshotUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/')) {
+        showToast('Please select an image file', 'error');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        elements.screenshotPreview.innerHTML = `<img src="${event.target.result}" alt="Screenshot">`;
+    };
+    reader.readAsDataURL(file);
+}
+
+function startSpeechToText() {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        showToast('Speech recognition is not supported in your browser', 'error');
+        return;
+    }
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+    
+    recognition.start();
+    
+    showToast('Listening... Speak now', 'info');
+    
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        elements.feedbackDescription.value += transcript;
+        showToast('Speech transcribed successfully', 'success');
+    };
+    
+    recognition.onerror = (event) => {
+        showToast('Speech recognition error: ' + event.error, 'error');
+    };
+}
+
+// Dashboard functions
+function updateDashboard() {
+    if (!state.currentUser) return;
+    
+    // Update user info
+    elements.dashboardUsername.textContent = state.currentUser.username;
+    elements.dashboardEmail.textContent = state.currentUser.email;
+    elements.profileUsername.value = state.currentUser.username;
+    elements.profileEmail.value = state.currentUser.email;
+    
+    if (state.currentUser.avatar) {
+        elements.profileAvatar.querySelector('img').src = state.currentUser.avatar;
+    }
+    
+    // Update user stats
+    const userFeedbacks = state.feedbacks.filter(f => f.user.id === state.currentUser.id);
+    const userFeedbacksCount = userFeedbacks.length;
+    
+    let userLikesCount = 0;
+    userFeedbacks.forEach(feedback => {
+        userLikesCount += feedback.likes ? feedback.likes.length : 0;
+    });
+    
+    let userRepliesCount = 0;
+    userFeedbacks.forEach(feedback => {
+        userRepliesCount += feedback.replies ? feedback.replies.length : 0;
+    });
+    
+    elements.userFeedbacksCount.textContent = userFeedbacksCount;
+    elements.userLikesCount.textContent = userLikesCount;
+    elements.userRepliesCount.textContent = userRepliesCount;
+    
+    // Render user feedbacks
+    renderUserFeedbacks(userFeedbacks);
+}
+
+function renderUserFeedbacks(feedbacks) {
+    elements.userFeedbacks.innerHTML = '';
+    
+    if (feedbacks.length === 0) {
+        elements.userFeedbacks.innerHTML = `
+            <div class="no-feedbacks">
+                <i class="fas fa-comment-slash"></i>
+                <h3>No feedbacks yet</h3>
+                <p>Share your first feedback to get started!</p>
+                <button class="btn btn-primary" data-page="add-feedback">Add Feedback</button>
             </div>
-        </div>
-    `).join('');
-}
-
-function markNotificationAsRead(notificationId) {
-    const notification = notifications.find(n => n.id === notificationId);
-    if (notification) {
-        notification.read = true;
-        saveNotifications();
-        updateNotifications();
-    }
-}
-
-function markAllNotificationsAsRead() {
-    notifications.forEach(notification => {
-        notification.read = true;
-    });
-    saveNotifications();
-    updateNotifications();
-}
-
-function clearAllNotifications() {
-    notifications = [];
-    saveNotifications();
-    updateNotifications();
-    showToast('All notifications cleared', 'info');
-}
-
-function saveNotifications() {
-    localStorage.setItem('notifications', JSON.stringify(notifications));
-}
-
-function getNotificationIcon(type) {
-    const icons = {
-        'income': 'arrow-down',
-        'expense': 'arrow-up',
-        'delete': 'trash'
-    };
-    return icons[type] || 'bell';
-}
-
-// Dynamic Chart Functions
-function initializeCharts() {
-    createIncomeExpenseChart();
-    createCategoryChart();
-    createMonthlyTrendChart();
-    createBudgetChart();
-}
-
-function updateCharts() {
-    if (incomeExpenseChart) incomeExpenseChart.destroy();
-    if (categoryChart) categoryChart.destroy();
-    if (monthlyTrendChart) monthlyTrendChart.destroy();
-    if (budgetChart) budgetChart.destroy();
-    
-    initializeCharts();
-}
-
-function createIncomeExpenseChart() {
-    const ctx = document.getElementById('incomeExpenseChart').getContext('2d');
-    
-    // Get actual data from transactions
-    const monthlyData = getMonthlyIncomeExpenseData();
-    
-    incomeExpenseChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: monthlyData.labels,
-            datasets: [
-                {
-                    label: 'Income',
-                    data: monthlyData.income,
-                    borderColor: '#06d6a0',
-                    backgroundColor: 'rgba(6, 214, 160, 0.1)',
-                    borderWidth: 3,
-                    fill: true,
-                    tension: 0.4
-                },
-                {
-                    label: 'Expenses',
-                    data: monthlyData.expense,
-                    borderColor: '#ef4444',
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                    borderWidth: 3,
-                    fill: true,
-                    tension: 0.4
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'top',
-                },
-                tooltip: {
-                    mode: 'index',
-                    intersect: false,
-                    callbacks: {
-                        label: function(context) {
-                            return `${context.dataset.label}: ₹${context.parsed.y.toLocaleString()}`;
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        color: 'rgba(100, 116, 139, 0.1)'
-                    },
-                    ticks: {
-                        callback: function(value) {
-                            return '₹' + value.toLocaleString();
-                        }
-                    }
-                },
-                x: {
-                    grid: {
-                        display: false
-                    }
-                }
-            }
-        }
-    });
-}
-
-function createCategoryChart() {
-    const ctx = document.getElementById('categoryChart').getContext('2d');
-    
-    // Get actual category data from transactions
-    const categoryData = getCategorySpendingData();
-    
-    categoryChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: categoryData.labels,
-            datasets: [{
-                data: categoryData.amounts,
-                backgroundColor: categoryData.colors,
-                borderWidth: 0,
-                hoverOffset: 8
-            }]
-        },
-        options: {
-            responsive: true,
-            cutout: '70%',
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        padding: 20,
-                        usePointStyle: true
-                    }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const total = categoryData.amounts.reduce((a, b) => a + b, 0);
-                            const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
-                            return `${context.label}: ₹${context.parsed.toLocaleString()}${total > 0 ? ` (${percentage}%)` : ''}`;
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
-function createMonthlyTrendChart() {
-    const ctx = document.getElementById('monthlyTrendChart').getContext('2d');
-    
-    // Get actual monthly balance data
-    const monthlyBalance = getMonthlyBalanceData();
-    
-    monthlyTrendChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: monthlyBalance.labels,
-            datasets: [{
-                label: 'Monthly Balance',
-                data: monthlyBalance.balances,
-                backgroundColor: monthlyBalance.balances.map(balance => 
-                    balance >= 0 ? 'rgba(6, 214, 160, 0.7)' : 'rgba(239, 68, 68, 0.7)'
-                ),
-                borderColor: monthlyBalance.balances.map(balance => 
-                    balance >= 0 ? '#06d6a0' : '#ef4444'
-                ),
-                borderWidth: 2,
-                borderRadius: 8,
-                borderSkipped: false,
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return `Balance: ₹${context.parsed.y.toLocaleString()}`;
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        color: 'rgba(100, 116, 139, 0.1)'
-                    },
-                    ticks: {
-                        callback: function(value) {
-                            return '₹' + value.toLocaleString();
-                        }
-                    }
-                },
-                x: {
-                    grid: {
-                        display: false
-                    }
-                }
-            }
-        }
-    });
-}
-
-function createBudgetChart() {
-    const ctx = document.getElementById('budgetChart').getContext('2d');
-    
-    // Get actual vs budget data
-    const budgetData = getBudgetVsActualData();
-    
-    budgetChart = new Chart(ctx, {
-        type: 'radar',
-        data: {
-            labels: budgetData.categories,
-            datasets: [
-                {
-                    label: 'Budgeted',
-                    data: budgetData.budgeted,
-                    borderColor: '#6366f1',
-                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                    pointBackgroundColor: '#6366f1',
-                    pointBorderColor: '#fff',
-                    pointHoverBackgroundColor: '#fff',
-                    pointHoverBorderColor: '#6366f1'
-                },
-                {
-                    label: 'Actual',
-                    data: budgetData.actual,
-                    borderColor: '#06d6a0',
-                    backgroundColor: 'rgba(6, 214, 160, 0.1)',
-                    pointBackgroundColor: '#06d6a0',
-                    pointBorderColor: '#fff',
-                    pointHoverBackgroundColor: '#fff',
-                    pointHoverBorderColor: '#06d6a0'
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                r: {
-                    beginAtZero: true,
-                    angleLines: {
-                        color: 'rgba(100, 116, 139, 0.1)'
-                    },
-                    grid: {
-                        color: 'rgba(100, 116, 139, 0.1)'
-                    },
-                    pointLabels: {
-                        color: getComputedStyle(document.body).getPropertyValue('--dark')
-                    },
-                    ticks: {
-                        color: getComputedStyle(document.body).getPropertyValue('--gray'),
-                        backdropColor: 'transparent',
-                        callback: function(value) {
-                            return '₹' + value.toLocaleString();
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
-// Data Calculation Functions
-function getMonthlyIncomeExpenseData() {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const currentMonth = new Date().getMonth();
-    
-    // Get last 6 months
-    const labels = [];
-    const incomeData = [];
-    const expenseData = [];
-    
-    for (let i = 5; i >= 0; i--) {
-        const monthIndex = (currentMonth - i + 12) % 12;
-        labels.push(months[monthIndex]);
+        `;
         
-        // Calculate income and expense for each month
-        const monthTransactions = transactions.filter(transaction => {
-            const transactionDate = new Date(transaction.date);
-            return transactionDate.getMonth() === monthIndex && 
-                   transactionDate.getFullYear() === new Date().getFullYear();
+        // Add event listener to the button
+        elements.userFeedbacks.querySelector('button').addEventListener('click', (e) => {
+            e.preventDefault();
+            navigateToPage('add-feedback');
         });
         
-        const income = monthTransactions
-            .filter(t => t.type === 'income')
-            .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-            
-        const expense = monthTransactions
-            .filter(t => t.type === 'expense')
-            .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-            
-        incomeData.push(income);
-        expenseData.push(expense);
+        return;
     }
     
-    return { labels, income: incomeData, expense: expenseData };
+    feedbacks.forEach(feedback => {
+        const feedbackElement = createFeedbackElement(feedback);
+        elements.userFeedbacks.appendChild(feedbackElement);
+    });
 }
 
-function getCategorySpendingData() {
-    const categoryColors = {
-        'food': '#10b981',
-        'transport': '#f59e0b',
-        'shopping': '#8b5cf6',
-        'entertainment': '#ec4899',
-        'bills': '#3b82f6',
-        'health': '#ef4444',
-        'education': '#06b6d4',
-        'other': '#6b7280',
-        'salary': '#10b981',
-        'freelance': '#f59e0b',
-        'investment': '#8b5cf6',
-        'business': '#ec4899'
-    };
-    
-    const categoryTotals = {};
-    
-    // Calculate totals for each category
-    transactions.forEach(transaction => {
-        if (!categoryTotals[transaction.category]) {
-            categoryTotals[transaction.category] = 0;
+function switchDashboardTab(tabId) {
+    // Update active sidebar menu item
+    elements.sidebarMenuItems.forEach(item => {
+        item.classList.remove('active');
+        if (item.getAttribute('data-tab') === tabId) {
+            item.classList.add('active');
         }
-        categoryTotals[transaction.category] += Math.abs(transaction.amount);
     });
     
-    // Filter out categories with zero amount and sort by amount
-    const sortedCategories = Object.entries(categoryTotals)
-        .filter(([category, amount]) => amount > 0)
-        .sort((a, b) => b[1] - a[1]);
+    // Update active tab
+    elements.dashboardTabs.forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.id === tabId) {
+            tab.classList.add('active');
+        }
+    });
+}
+
+function handleProfileUpdate(e) {
+    e.preventDefault();
     
-    const labels = sortedCategories.map(([category]) => getCategoryName(category));
-    const amounts = sortedCategories.map(([_, amount]) => amount);
-    const colors = sortedCategories.map(([category]) => categoryColors[category] || '#6b7280');
+    if (!state.currentUser) return;
     
-    // If no data, show empty state
-    if (labels.length === 0) {
-        return {
-            labels: ['No Data'],
-            amounts: [1],
-            colors: ['#cbd5e1']
+    const username = elements.profileUsername.value;
+    const email = elements.profileEmail.value;
+    const currentPassword = elements.currentPassword.value;
+    const newPassword = elements.newPassword.value;
+    const confirmPassword = elements.confirmPassword.value;
+    
+    // Check if username is already taken (by another user)
+    const usernameTaken = state.users.find(u => u.username === username && u.id !== state.currentUser.id);
+    if (usernameTaken) {
+        showToast('Username already taken', 'error');
+        return;
+    }
+    
+    // Check if email is already taken (by another user)
+    const emailTaken = state.users.find(u => u.email === email && u.id !== state.currentUser.id);
+    if (emailTaken) {
+        showToast('Email already registered', 'error');
+        return;
+    }
+    
+    // Update user info
+    state.currentUser.username = username;
+    state.currentUser.email = email;
+    
+    // Update password if provided
+    if (currentPassword && newPassword) {
+        if (currentPassword !== state.currentUser.password) {
+            showToast('Current password is incorrect', 'error');
+            return;
+        }
+        
+        if (newPassword !== confirmPassword) {
+            showToast('New passwords do not match', 'error');
+            return;
+        }
+        
+        state.currentUser.password = newPassword;
+    }
+    
+    // Update user in state and storage
+    updateUser(state.currentUser);
+    
+    // Update all feedbacks by this user
+    state.feedbacks.forEach(feedback => {
+        if (feedback.user.id === state.currentUser.id) {
+            feedback.user.username = username;
+            feedback.user.avatar = state.currentUser.avatar;
+        }
+    });
+    
+    saveData();
+    
+    // Update UI
+    checkAuthStatus();
+    updateDashboard();
+    
+    // Clear password fields
+    elements.currentPassword.value = '';
+    elements.newPassword.value = '';
+    elements.confirmPassword.value = '';
+    
+    showToast('Profile updated successfully', 'success');
+}
+
+function triggerAvatarUpload() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        if (!file.type.startsWith('image/')) {
+            showToast('Please select an image file', 'error');
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            state.currentUser.avatar = event.target.result;
+            updateUser(state.currentUser);
+            
+            // Update all feedbacks by this user
+            state.feedbacks.forEach(feedback => {
+                if (feedback.user.id === state.currentUser.id) {
+                    feedback.user.avatar = event.target.result;
+                }
+            });
+            
+            saveData();
+            checkAuthStatus();
+            updateDashboard();
+            showToast('Avatar updated successfully', 'success');
         };
-    }
+        reader.readAsDataURL(file);
+    };
     
-    return { labels, amounts, colors };
+    input.click();
 }
 
-function getMonthlyBalanceData() {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const currentMonth = new Date().getMonth();
+// Data management
+function exportUserData() {
+    if (!state.currentUser) return;
     
-    const labels = [];
-    const balances = [];
+    const userData = {
+        user: state.currentUser,
+        feedbacks: state.feedbacks.filter(f => f.user.id === state.currentUser.id)
+    };
     
-    for (let i = 5; i >= 0; i--) {
-        const monthIndex = (currentMonth - i + 12) % 12;
-        labels.push(months[monthIndex]);
+    const dataStr = JSON.stringify(userData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `feedbackhub-data-${state.currentUser.username}-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    showToast('Data exported successfully', 'success');
+}
+
+function importUserData(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        try {
+            const importedData = JSON.parse(event.target.result);
+            
+            // Validate imported data
+            if (!importedData.user || !importedData.feedbacks) {
+                showToast('Invalid data file', 'error');
+                return;
+            }
+            
+            // Confirm import
+            if (!confirm(`This will replace all your current feedbacks (${importedData.feedbacks.length} items). Continue?`)) {
+                return;
+            }
+            
+            // Remove user's existing feedbacks
+            state.feedbacks = state.feedbacks.filter(f => f.user.id !== state.currentUser.id);
+            
+            // Add imported feedbacks
+            importedData.feedbacks.forEach(feedback => {
+                // Update feedback ID and user reference
+                feedback.id = generateId();
+                feedback.user = {
+                    id: state.currentUser.id,
+                    username: state.currentUser.username,
+                    avatar: state.currentUser.avatar
+                };
+                
+                state.feedbacks.push(feedback);
+            });
+            
+            saveData();
+            updateDashboard();
+            updateHomeStats();
+            
+            // Reset file input
+            e.target.value = '';
+            
+            showToast('Data imported successfully', 'success');
+        } catch (error) {
+            showToast('Error importing data: ' + error.message, 'error');
+        }
+    };
+    reader.readAsText(file);
+}
+
+function resetUserData() {
+    if (!confirm('This will permanently delete all your feedbacks. This action cannot be undone. Are you sure?')) {
+        return;
+    }
+    
+    // Remove user's feedbacks
+    state.feedbacks = state.feedbacks.filter(f => f.user.id !== state.currentUser.id);
+    
+    saveData();
+    updateDashboard();
+    updateHomeStats();
+    
+    showToast('All your data has been reset', 'success');
+}
+
+// Utility functions
+function generateId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+        <span>${message}</span>
+    `;
+    
+    elements.toastContainer.appendChild(toast);
+    
+    // Remove toast after 5 seconds
+    setTimeout(() => {
+        toast.remove();
+    }, 5000);
+}
+
+function triggerConfetti() {
+    const canvas = elements.confettiCanvas;
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    
+    const confettiCount = 150;
+    const confetti = [];
+    
+    for (let i = 0; i < confettiCount; i++) {
+        confetti.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height - canvas.height,
+            size: Math.random() * 10 + 5,
+            speed: Math.random() * 3 + 2,
+            color: `hsl(${Math.random() * 360}, 100%, 50%)`,
+            rotation: Math.random() * 360,
+            rotationSpeed: Math.random() * 10 - 5
+        });
+    }
+    
+    let animationId;
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Calculate balance for each month
-        const monthTransactions = transactions.filter(transaction => {
-            const transactionDate = new Date(transaction.date);
-            return transactionDate.getMonth() === monthIndex && 
-                   transactionDate.getFullYear() === new Date().getFullYear();
+        let stillFalling = false;
+        
+        confetti.forEach(particle => {
+            ctx.save();
+            ctx.translate(particle.x, particle.y);
+            ctx.rotate(particle.rotation * Math.PI / 180);
+            
+            ctx.fillStyle = particle.color;
+            ctx.fillRect(-particle.size / 2, -particle.size / 2, particle.size, particle.size);
+            
+            ctx.restore();
+            
+            particle.y += particle.speed;
+            particle.rotation += particle.rotationSpeed;
+            
+            if (particle.y < canvas.height) {
+                stillFalling = true;
+            }
         });
         
-        const balance = monthTransactions.reduce((sum, t) => sum + t.amount, 0);
-        balances.push(balance);
+        if (stillFalling) {
+            animationId = requestAnimationFrame(animate);
+        } else {
+            cancelAnimationFrame(animationId);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
     }
     
-    return { labels, balances };
+    animate();
 }
 
-function getBudgetVsActualData() {
-    const mainCategories = ['food', 'shopping', 'transport', 'bills', 'entertainment', 'health'];
-    
-    const categories = mainCategories.map(getCategoryName);
-    const budgeted = [8000, 6000, 4000, 7000, 3000, 2000]; // Sample budget data
-    const actual = [];
-    
-    // Calculate actual spending for each category
-    mainCategories.forEach(category => {
-        const actualAmount = transactions
-            .filter(t => t.type === 'expense' && t.category === category)
-            .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-        actual.push(actualAmount);
-    });
-    
-    return { categories, budgeted, actual };
-}
-
-// Utility Functions
-function formatCurrency(amount) {
-    return new Intl.NumberFormat('en-IN', {
-        style: 'currency',
-        currency: 'INR',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-    }).format(amount);
-}
-
-function formatDate(dateString) {
-    return new Date(dateString).toLocaleDateString('en-IN', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-    });
-}
-
-function formatTime(timestamp) {
-    const now = new Date().getTime();
-    const diff = now - timestamp;
-    
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-    
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    if (days < 7) return `${days}d ago`;
-    
-    return new Date(timestamp).toLocaleDateString('en-IN', {
-        month: 'short',
-        day: 'numeric'
-    });
-}
-
-function getCategoryIcon(category) {
-    const icons = {
-        food: 'fas fa-utensils',
-        transport: 'fas fa-car',
-        shopping: 'fas fa-shopping-bag',
-        entertainment: 'fas fa-film',
-        bills: 'fas fa-file-invoice-dollar',
-        health: 'fas fa-heartbeat',
-        education: 'fas fa-graduation-cap',
-        salary: 'fas fa-money-bill-wave',
-        freelance: 'fas fa-laptop-code',
-        investment: 'fas fa-chart-line',
-        business: 'fas fa-briefcase',
-        other: 'fas fa-circle'
-    };
-    return icons[category] || 'fas fa-circle';
-}
-
-function getCategoryName(category) {
-    const names = {
-        food: 'Food & Dining',
-        transport: 'Transportation',
-        shopping: 'Shopping',
-        entertainment: 'Entertainment',
-        bills: 'Bills & Utilities',
-        health: 'Healthcare',
-        education: 'Education',
-        salary: 'Salary',
-        freelance: 'Freelance',
-        investment: 'Investment',
-        business: 'Business',
-        other: 'Other'
-    };
-    return names[category] || 'Other';
-}
-
-function showToast(message, type) {
-    toast.textContent = message;
-    toast.className = `toast ${type} show`;
-    
-    setTimeout(() => {
-        toast.classList.remove('show');
-    }, 3000);
-}
-
-function loadSampleData() {
-    if (transactions.length === 0) {
-        const sampleTransactions = [
-            {
-                id: '1',
-                description: 'Monthly Salary',
-                amount: 50000,
-                type: 'income',
-                category: 'salary',
-                date: new Date().toISOString().split('T')[0],
-                timestamp: new Date().getTime() - 86400000
-            },
-            {
-                id: '2',
-                description: 'Freelance Project',
-                amount: 15000,
-                type: 'income',
-                category: 'freelance',
-                date: new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0],
-                timestamp: new Date().getTime() - 2 * 86400000
-            },
-            {
-                id: '3',
-                description: 'Groceries',
-                amount: -2500,
-                type: 'expense',
-                category: 'food',
-                date: new Date().toISOString().split('T')[0],
-                timestamp: new Date().getTime() - 43200000
-            },
-            {
-                id: '4',
-                description: 'Netflix Subscription',
-                amount: -649,
-                type: 'expense',
-                category: 'entertainment',
-                date: new Date(Date.now() - 86400000).toISOString().split('T')[0],
-                timestamp: new Date().getTime() - 86400000
-            },
-            {
-                id: '5',
-                description: 'Petrol',
-                amount: -1200,
-                type: 'expense',
-                category: 'transport',
-                date: new Date(Date.now() - 3 * 86400000).toISOString().split('T')[0],
-                timestamp: new Date().getTime() - 3 * 86400000
-            }
-        ];
+function updateUser(user) {
+    const userIndex = state.users.findIndex(u => u.id === user.id);
+    if (userIndex !== -1) {
+        state.users[userIndex] = user;
+        saveData();
         
-        transactions = sampleTransactions;
-        saveTransactions();
+        // Update session storage if it's the current user
+        if (state.currentUser && state.currentUser.id === user.id) {
+            sessionStorage.setItem('currentUser', JSON.stringify(user));
+        }
     }
 }
 
-// Export for global access
-window.openDeleteModal = openDeleteModal;
-window.markNotificationAsRead = markNotificationAsRead;
+// Handle window resize
+window.addEventListener('resize', () => {
+    if (elements.confettiCanvas) {
+        elements.confettiCanvas.width = window.innerWidth;
+        elements.confettiCanvas.height = window.innerHeight;
+    }
+});
